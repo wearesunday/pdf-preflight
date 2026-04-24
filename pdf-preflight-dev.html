@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sunday — Ad preflight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Sunday brand tokens ─────────────────────────────────────── */
+  :root {
+    --bg:          #FEFDFB;
+    --bg-surface:  #FFFFFF;
+    --bg-subtle:   #F4F2EE;
+    --bg-muted:    #ECEAE4;
+    --border:      #DDD9D0;
+    --border-soft: #ECEAE4;
+    --text:        #1C1B18;
+    --text-2:      #6B6860;
+    --text-3:      #A8A49C;
+    --accent:      #E8622A;
+    --accent-bg:   #FDF1EC;
+    --pass:        #1E8C4A;
+    --pass-bg:     #EDF7F2;
+    --fail:        #C4392A;
+    --fail-bg:     #FBECEA;
+    --warn:        #B86B12;
+    --warn-bg:     #FDF4E8;
+    --info:        #2563EB;
+    --info-bg:     #EEF4FF;
+    --mono:        'DM Mono', 'Fira Code', monospace;
+    --sans:        'DM Sans', system-ui, sans-serif;
+    --radius:      6px;
+    --radius-lg:   10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── Nav header ──────────────────────────────────────────────── */
+  .s-nav {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .s-nav img { height: 22px; display: block; }
+  .s-nav-tool {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .s-nav-tool span {
+    color: var(--accent);
+  }
+
+  /* ── Page wrapper ─────────────────────────────────────────────── */
+  .s-page { max-width: 900px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+
+  .s-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+  }
+  .s-subtitle {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-bottom: 1.75rem;
+  }
+
+  /* ── Spec bar ─────────────────────────────────────────────────── */
+  .spec-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.25rem;
+  }
+  .spec-group { display: flex; align-items: center; gap: 8px; }
+  .spec-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    width: 36px;
+  }
+  .spec-bar input[type="number"] {
+    width: 52px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--mono);
+    padding: 5px 6px;
+    text-align: center;
+    transition: border-color 0.15s;
+  }
+  .spec-bar input[type="number"]:focus { outline: none; border-color: var(--accent); }
+  .spec-bar input[type="number"]:disabled { opacity: 0.35; }
+  .sep { color: var(--border); font-size: 12px; }
+  .unit { font-size: 11px; color: var(--text-3); }
+  .spec-bar select {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-2);
+    font-size: 12px;
+    font-family: var(--sans);
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .spec-bar select:focus { outline: none; border-color: var(--accent); }
+  .checks-config { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-left: auto; }
+  .check-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); cursor: pointer; }
+  .check-toggle input { accent-color: var(--accent); cursor: pointer; }
+  .divider { width: 1px; height: 24px; background: var(--border-soft); flex-shrink: 0; }
+
+  /* ── Dropzone ─────────────────────────────────────────────────── */
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 3.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    background: var(--bg-surface);
+  }
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .dropzone .icon { width: 36px; height: 36px; margin: 0 auto 1rem; opacity: 0.25; }
+  .dropzone .primary { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 5px; }
+  .dropzone .secondary { font-size: 12px; color: var(--text-3); }
+
+  /* ── Results ──────────────────────────────────────────────────── */
+  .results { margin-top: 1.75rem; }
+  .file-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .file-header-text { flex: 1; }
+  .file-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; word-break: break-all; }
+  .file-meta { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+  .file-pub { font-size: 11px; color: var(--accent); margin-top: 2px; font-weight: 500; }
+  .score-badge { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .preview-thumb { width: 60px; flex-shrink: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .preview-thumb canvas { display: block; width: 100%; height: auto; }
+
+  /* ── Checks table ─────────────────────────────────────────────── */
+  .checks-table { width: 100%; border-collapse: collapse; }
+  .checks-table tr { border-bottom: 1px solid var(--border-soft); }
+  .checks-table tr:last-child { border-bottom: none; }
+  .checks-table td { padding: 10px 0; vertical-align: top; }
+  .checks-table td:first-child { width: 28px; padding-top: 12px; }
+  .checks-table td:nth-child(2) { font-size: 13px; font-weight: 500; color: var(--text); padding-right: 16px; width: 160px; padding-top: 12px; }
+  .checks-table td:nth-child(3) { font-size: 12px; font-family: var(--mono); color: var(--text-2); padding-top: 11px; }
+  .checks-table td:last-child { text-align: right; width: 64px; padding-top: 11px; }
+
+  /* ── Section heading inside results ──────────────────────────── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin: 1.5rem 0 0.5rem;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  /* ── Status dots ──────────────────────────────────────────────── */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .status.pass { background: var(--pass-bg); color: var(--pass); }
+  .status.fail { background: var(--fail-bg); color: var(--fail); }
+  .status.warn { background: var(--warn-bg); color: var(--warn); }
+  .status.info { background: var(--info-bg); color: var(--info); }
+
+  /* ── Badges ───────────────────────────────────────────────────── */
+  .badge {
+    display: inline-block;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .badge.pass { background: var(--pass-bg); color: var(--pass); }
+  .badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.info { background: var(--info-bg); color: var(--info); }
+
+  /* ── Detail text ──────────────────────────────────────────────── */
+  .det { display: block; line-height: 1.5; }
+  .det.bad { color: var(--fail); }
+  .det.good { color: var(--pass); }
+  .det.sub { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+  .visual-tag {
+    display: inline-block;
+    font-size: 9px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 1px 5px; border-radius: 2px;
+    background: var(--info-bg); color: var(--info);
+    margin-left: 5px; vertical-align: middle;
+  }
+
+  /* ── Loading ──────────────────────────────────────────────────── */
+  .loading { display: flex; align-items: center; gap: 10px; padding: 1.5rem 0; color: var(--text-2); font-size: 13px; }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Summary bar ──────────────────────────────────────────────── */
+  .summary-bar {
+    display: flex;
+    gap: 0;
+    margin-top: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .summary-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 12px 0;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+  }
+  .summary-item:last-child { border-right: none; }
+  .summary-count { font-size: 20px; font-weight: 700; font-family: var(--mono); }
+  .summary-count.pass { color: var(--pass); }
+  .summary-count.fail { color: var(--fail); }
+  .summary-count.warn { color: var(--warn); }
+  .summary-lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── Footnotes & misc ─────────────────────────────────────────── */
+  .footnote { font-size: 11px; color: var(--text-3); margin-top: 10px; line-height: 1.6; }
+  .reset-link { font-size: 12px; color: var(--accent); margin-top: 1rem; cursor: pointer; display: inline-block; font-weight: 500; }
+  .reset-link:hover { text-decoration: underline; }
+  .error-msg {
+    padding: 12px 16px;
+    background: var(--fail-bg);
+    border: 1px solid rgba(196,57,42,0.25);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--fail);
+  }
+  .mono { font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<nav class="s-nav">
+  <img src="https://media.wearesunday.com/wp-content/uploads/2024/04/17121243/wearesunday-logo.png"
+       alt="Sunday" onerror="this.style.display='none';this.nextSibling.style.display='block'">
+  <span style="display:none;font-weight:700;font-size:16px;letter-spacing:-0.02em;color:#1C1B18;">SUNDAY</span>
+  <span class="s-nav-tool">Ad <span>Preflight</span></span>
+</nav>
+
+<div class="s-page">
+<p class="s-title">Ad preflight</p>
+<p class="s-subtitle">Check artwork against publication specs before sending to press.</p>
+
+<div class="spec-bar">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#555;white-space:nowrap;">Publication</span>
+    <select id="publication" onchange="onPublicationChange()">
+      <option value="royal-ballet" selected>Royal Ballet &amp; Opera — Magazine</option>
+      <option value="rbo-programme">Royal Ballet &amp; Opera — Programme</option>
+      <option value="rbo-season-guide">Royal Ballet &amp; Opera — Season Guide</option>
+      <option value="rics-modus">RICS Modus</option>
+      <option value="ocado-life">OcadoLife — Magazine</option>
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#555;white-space:nowrap;">Size</span>
+    <select id="adsize" onchange="onSizeChange()">
+      <!-- populated by onPublicationChange() -->
+    </select>
+  </div>
+  <div class="divider"></div>
+  <div class="spec-group">
+    <span class="spec-label">Trim</span>
+    <input type="number" id="trim-w" value="210" min="1" step="0.5">
+    <span class="sep">×</span>
+    <input type="number" id="trim-h" value="270" min="1" step="0.5">
+    <span class="unit">mm</span>
+    <span id="trim-note" style="font-size:10px;color:#555;display:none;">not specified</span>
+  </div>
+  <div class="spec-group">
+    <span class="spec-label">Bleed</span>
+    <input type="number" id="bleed-w" value="216" min="1" step="0.5">
+    <span class="sep">×</span>
+    <input type="number" id="bleed-h" value="276" min="1" step="0.5">
+    <span class="unit">mm</span>
+    <span id="bleed-note" style="font-size:10px;color:#555;display:none;">not specified</span>
+  </div>
+  <div class="divider"></div>
+  <div class="checks-config">
+    <label class="check-toggle"><input type="checkbox" id="chk-transparency" checked> No transparency</label>
+    <label class="check-toggle"><input type="checkbox" id="chk-profile" checked> PDF profile</label>
+    <label class="check-toggle"><input type="checkbox" id="chk-cmyk" checked> CMYK</label>
+    <label class="check-toggle"><input type="checkbox" id="chk-cropmarks" checked> 1 set crop marks</label>
+    <label class="check-toggle"><input type="checkbox" id="chk-colourbars" checked> No colour bars</label>
+  </div>
+</div>
+
+<div class="dropzone" id="dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');var f=event.dataTransfer.files[0];if(f)handleFile(f);">
+  <svg class="icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="4" width="22" height="28" rx="2" stroke="#1C1B18" stroke-width="1.5"/>
+    <path d="M22 4v8h6" stroke="#1C1B18" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M12 20h16M12 25h10" stroke="#1C1B18" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="31" cy="31" r="7" fill="#FEFDFB" stroke="#E8622A" stroke-width="1.5"/>
+    <path d="M31 28v6M28 31h6" stroke="#E8622A" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+  <p class="primary">Drop a PDF or TIFF here to preflight</p>
+  <p class="secondary">or click to browse — file stays local, nothing is uploaded</p>
+  <input type="file" id="fileInput" accept=".pdf,.tif,.tiff,application/pdf,image/tiff" onchange="handleFile(this.files[0])" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+</div>
+
+<div class="results" id="results" style="display:none;"></div>
+
+<script>
+// ── Publication / size data ───────────────────────────────────────────────────
+// To add a new publication: add a new key under PUBLICATIONS with a label and
+// a sizes object. trimW/trimH/bleedW/bleedH are in mm (width × height).
+// If a size has no trim/bleed spec, set them to null — dimension checks are skipped.
+
+const PUBLICATIONS = {
+  'royal-ballet': {
+    label: 'Royal Ballet & Opera — Magazine',
+    profileLabel: 'Matte/uncoated ICC profile (e.g. PSO Uncoated ISO12647 / FOGRA47)',
+    sizes: {
+      'full-page':  { label: 'Full page colour',          trimW: 210, trimH: 270, bleedW: 216, bleedH: 276 },
+      'dps':        { label: 'Double-page spread',        trimW: 420, trimH: 270, bleedW: 426, bleedH: 276 },
+      'half-h':     { label: 'Half page — horizontal',    trimW: null, trimH: null, bleedW: null, bleedH: null, note: 'Live area 187 × 121.5 mm — trim/bleed not specified in media pack' },
+      'half-v':     { label: 'Half page — vertical',      trimW: null, trimH: null, bleedW: null, bleedH: null, note: 'Live area 90 × 250 mm — trim/bleed not specified in media pack' },
+      'quarter-h':  { label: 'Quarter page — horizontal', trimW: null, trimH: null, bleedW: null, bleedH: null, note: 'Live area 90 × 121.5 mm — trim/bleed not specified in media pack' },
+    }
+  },
+
+  'rbo-programme': {
+    label: 'Royal Ballet & Opera — Programme',
+    profileLabel: 'Matte/uncoated ICC profile (e.g. PSO Uncoated ISO12647 / FOGRA47)',
+    sizes: {
+      'dps':            { label: 'Double-page spread',    trimW: 372, trimH: 246, bleedW: 380, bleedH: 254 },
+      'single-page':    { label: 'Single page',           trimW: 186, trimH: 246, bleedW: 194, bleedH: 254 },
+      'half-portrait':  { label: 'Half page — portrait',  trimW: 210, trimH: 270, bleedW: 216, bleedH: 276 },
+      'half-h':         { label: 'Half page — horizontal', trimW: 270, trimH: 420, bleedW: 276, bleedH: 426 },
+    }
+  }
+  ,
+
+  'rbo-season-guide': {
+    label: 'Royal Ballet & Opera — Season Guide',
+    profileLabel: 'Matte/uncoated ICC profile (e.g. PSO Uncoated ISO12647 / FOGRA47)',
+    sizes: {
+      'single-page': { label: 'Single page',       trimW: 155, trimH: 225, bleedW: 161, bleedH: 231 },
+      'dps':         { label: 'Double-page spread', trimW: 310, trimH: 225, bleedW: 316, bleedH: 231 },
+    }
+  }
+  ,
+
+  'rics-modus': {
+    label: 'RICS Modus',
+    profileLabel: 'Coated 39L Profile (PDF/X1a:2001) — coated/gloss stock',
+    sizes: {
+      'full-page':  { label: 'Full page',             trimW: 200, trimH: 265, bleedW: 206, bleedH: 271,
+                      note: 'PDF/X1a:2001 — Coated 39L Profile. Min 300dpi, max ink coverage 280%.' },
+      'half-h':     { label: 'Half page horizontal',  trimW: 200, trimH: 127.5, bleedW: null, bleedH: null,
+                      note: 'No bleed specified. Type area 117.5 × 180mm. PDF/X1a:2001 — Coated 39L Profile.' },
+      'quarter':    { label: 'Quarter page',          trimW: 85,  trimH: 127.5, bleedW: null, bleedH: null,
+                      note: 'No bleed specified. Type area 112.5 × 75mm. PDF/X1a:2001 — Coated 39L Profile.' },
+    }
+  }
+  ,
+
+  'ocado-life': {
+    label: 'OcadoLife — Magazine',
+    profileLabel: 'Coated 39L Profile (PDF/X1a:2001)',
+    sizes: {
+      'full-text':  { label: 'Full page — text pages',
+                      trimW: 210, trimH: 270, bleedW: 216, bleedH: 276,
+                      profileLabel: 'Coated 39L Profile (PDF/X1a:2001) — text pages. Min 300dpi, max ink 280%.' },
+      'full-cover': { label: 'Full page — cover position',
+                      trimW: 210, trimH: 270, bleedW: 216, bleedH: 276,
+                      profileLabel: 'Coated 52L Profile (PDF/X1a:2001) — cover position. Min 300dpi, max ink 280%.' },
+      'cover-wrap': { label: 'Cover wrap',
+                      trimW: 221.5, trimH: 314.25, bleedW: 227.5, bleedH: 320.25,
+                      profileLabel: 'No PDF profile specified — artwork should be supplied as high-res TIFF, not PDF. Min 300dpi, max ink 280%. Flap area 37mm from left edge.' },
+    }
+  }
+  // Add further publications here
+};
+
+const PDFJS_URL    = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let pdfjsLib = null;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function onPublicationChange() {
+  const pub = PUBLICATIONS[document.getElementById('publication').value];
+  if (!pub) return;
+  const sel = document.getElementById('adsize');
+  sel.innerHTML = '';
+  Object.entries(pub.sizes).forEach(([key, sz]) => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = sz.label;
+    sel.appendChild(opt);
+  });
+  onSizeChange();
+}
+
+function onSizeChange() {
+  const pubKey  = document.getElementById('publication').value;
+  const sizeKey = document.getElementById('adsize').value;
+  const sz = PUBLICATIONS[pubKey]?.sizes[sizeKey];
+  if (!sz) return;
+
+  const hasDims = sz.trimW !== null;
+
+  // Toggle dim inputs vs "not specified" note
+  ['trim-w','trim-h','bleed-w','bleed-h'].forEach(id => {
+    const el = document.getElementById(id);
+    el.disabled = !hasDims;
+    el.style.opacity = hasDims ? '1' : '0.3';
+  });
+  document.getElementById('trim-note').style.display  = hasDims ? 'none' : 'inline';
+  document.getElementById('bleed-note').style.display = hasDims ? 'none' : 'inline';
+  document.querySelector('.spec-group .sep').style.opacity = hasDims ? '1' : '0.3';
+
+  if (hasDims) {
+    document.getElementById('trim-w').value  = sz.trimW;
+    document.getElementById('trim-h').value  = sz.trimH;
+    document.getElementById('bleed-w').value = sz.bleedW;
+    document.getElementById('bleed-h').value = sz.bleedH;
+  }
+}
+
+function getSpec() {
+  const pubKey  = document.getElementById('publication').value;
+  const sizeKey = document.getElementById('adsize').value;
+  const sz = PUBLICATIONS[pubKey]?.sizes[sizeKey];
+  const hasDims = sz && sz.trimW !== null;
+
+  return {
+    pubLabel:          PUBLICATIONS[pubKey]?.label || '',
+    sizeLabel:         sz?.label || '',
+    profileLabel:      sz?.profileLabel || PUBLICATIONS[pubKey]?.profileLabel || 'Print ICC profile',
+    sizeNote:          sz?.note || null,
+    trimW:             hasDims ? parseFloat(document.getElementById('trim-w').value) : null,
+    trimH:             hasDims ? parseFloat(document.getElementById('trim-h').value) : null,
+    bleedW:            hasDims ? parseFloat(document.getElementById('bleed-w').value) : null,
+    bleedH:            hasDims ? parseFloat(document.getElementById('bleed-h').value) : null,
+    checkTransparency: document.getElementById('chk-transparency').checked,
+    checkProfile:      document.getElementById('chk-profile').checked,
+    checkCMYK:         document.getElementById('chk-cmyk').checked,
+    checkCropMarks:    document.getElementById('chk-cropmarks').checked,
+    checkColourBars:   document.getElementById('chk-colourbars').checked
+  };
+}
+
+
+
+function loadPDFJS() {
+  if (pdfjsLib) return Promise.resolve(pdfjsLib);
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = PDFJS_URL;
+    s.onload = () => {
+      pdfjsLib = window['pdfjs-dist/build/pdf'];
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      res(pdfjsLib);
+    };
+    s.onerror = () => rej(new Error('PDF.js failed to load'));
+    document.head.appendChild(s);
+  });
+}
+
+function readAsBuffer(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function setLoading(msg) {
+  const el = document.getElementById('results');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="loading"><div class="spinner"></div>${msg}</div>`;
+}
+
+// ── Main flow ─────────────────────────────────────────────────────────────────
+
+function fileIsTIFF(file, buffer) {
+  if (file.name.match(/\.tiff?$/i)) return true;
+  const b = new Uint8Array(buffer, 0, 4);
+  return (b[0]===0x49&&b[1]===0x49&&b[2]===42&&b[3]===0) ||
+         (b[0]===0x4D&&b[1]===0x4D&&b[2]===0&&b[3]===42);
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  setLoading('Reading file…');
+
+  let buffer;
+  try { buffer = await readAsBuffer(file); }
+  catch (e) { showError('Could not read file: ' + e.message); return; }
+
+  if (fileIsTIFF(file, buffer)) {
+    await handleTIFF(file, buffer);
+  } else {
+    await handlePDF(file, buffer);
+  }
+}
+
+async function handlePDF(file, buffer) {
+  let structural;
+  try { structural = parsePDF(buffer, file.size); }
+  catch (e) { showError('Could not parse PDF: ' + e.message); return; }
+
+  setLoading('Rendering page for visual analysis…');
+
+  let visual = null, previewCanvas = null;
+  try {
+    const lib = await loadPDFJS();
+    const out = await renderAndAnalyse(lib, buffer, structural);
+    visual        = out.analysis;
+    previewCanvas = out.canvas;
+    // Override raw-byte extracted text with properly decoded PDF.js version
+    if (out.pdfjsText) structural.extractedText = out.pdfjsText;
+    if (out.imagePlacements) structural.imagePlacements = out.imagePlacements;
+  } catch (e) {
+    console.warn('Visual analysis failed:', e);
+  }
+
+  renderResults(structural, visual, previewCanvas, file.name, file.size);
+}
+
+async function handleTIFF(file, buffer) {
+  setLoading('Parsing TIFF metadata…');
+  const spec = getSpec();
+
+  let meta;
+  try { meta = parseTIFFMeta(buffer); }
+  catch (e) { showError('Could not parse TIFF: ' + e.message); return; }
+
+  setLoading('Decoding TIFF image — this may take a moment for large files…');
+
+  let previewCanvas = null, flapCanvas = null, flapContentScore = null;
+  try {
+    const result = await decodeTIFF(buffer, meta);
+    previewCanvas   = result.previewCanvas;
+    flapCanvas      = result.flapCanvas;
+    flapContentScore = result.flapContentScore;
+  } catch (e) {
+    console.warn('TIFF decode failed:', e);
+  }
+
+  renderTIFFResults(meta, spec, previewCanvas, flapCanvas, flapContentScore, file.name, file.size);
+}
+
+function showError(msg) {
+  const el = document.getElementById('results');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="error-msg">${msg}</div>`;
+}
+
+// ── Structural analysis (raw byte parsing) ────────────────────────────────────
+
+function parsePDF(buffer, filesize) {
+  const text = new TextDecoder('latin1').decode(new Uint8Array(buffer));
+
+  const verM    = text.match(/%PDF-(\d+\.\d+)/);
+  const version = verM ? verM[1] : 'unknown';
+
+  function parseBoxRaw(name) {
+    const re = new RegExp(`/${name}\\s*\\[\\s*([\\d.+-]+)\\s+([\\d.+-]+)\\s+([\\d.+-]+)\\s+([\\d.+-]+)\\s*\\]`);
+    const m  = text.match(re);
+    return m ? [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])] : null;
+  }
+
+  function mmDims(raw) {
+    if (!raw) return null;
+    const f = v => Math.round(v * 0.352778 * 10) / 10;
+    return { w: f(raw[2] - raw[0]), h: f(raw[3] - raw[1]) };
+  }
+
+  const mediaBoxRaw = parseBoxRaw('MediaBox');
+  const trimBoxRaw  = parseBoxRaw('TrimBox');
+  const bleedBoxRaw = parseBoxRaw('BleedBox');
+
+  const hasOutputIntent = text.includes('/OutputIntents');
+  let outputProfile = null;
+  if (hasOutputIntent) {
+    const m = text.match(/\/OutputConditionIdentifier\s*\(([^)]{1,80})\)/);
+    outputProfile = m ? m[1] : 'present but unidentified';
+  }
+
+  // Transparency detection — check multiple independent signals
+  const imageSMask   = /\/SMask\s+\d+\s+\d+\s+R/.test(text);     // real soft mask ref (not /SMask/None)
+  const transGroup   = /\/S\s*\/Transparency/.test(text);             // explicit transparency group
+  const transDict    = text.includes('/Transparency') && text.includes('/Group');  // group dict
+  const hasTransparency = imageSMask || transGroup || transDict;
+  const transSignals = [
+    imageSMask  && 'soft mask on image',
+    transGroup  && 'transparency group',
+    transDict   && 'transparency group dict',
+  ].filter(Boolean);
+
+  // Colour space detection — handles both direct device spaces and ICC-based profiles.
+  // Direct device spaces (simpler PDFs):
+  const hasDeviceRGB    = text.includes('/DeviceRGB');
+  const hasDeviceCMYK   = text.includes('/DeviceCMYK');
+  // sRGB ICC profile tag (sometimes used for screen-optimised exports):
+  const hasSRGBTag      = text.includes('/sRGB') || text.includes('sRGB IEC');
+  // ICC-based colour spaces: /N 4 = 4-component = CMYK; /N 3 = 3-component = RGB.
+  // We confirm the /N value is inside a stream dictionary (followed by >> and stream)
+  // to avoid matching /N 1 entries in the cross-reference table.
+  const hasICCCMYK      = /\/N\s+4\s*[/\\>]/.test(text);  // /N 4 near dict boundary
+  const hasICCRGB       = /\/N\s+3\s*[/\\>]/.test(text);
+  // /Separation = spot colour — implies a print/CMYK workflow
+  const hasSpot         = text.includes('/Separation') && !text.includes('/Separation/None');
+
+  const hasCMYK         = hasDeviceCMYK || hasICCCMYK;
+  const hasRGB          = (hasDeviceRGB || hasSRGBTag || hasICCRGB) && !hasCMYK;
+  // Build a human-readable colour space description for results
+  const csDetail = [
+    hasDeviceCMYK && 'DeviceCMYK',
+    hasICCCMYK    && 'ICC-based CMYK (N=4)',
+    hasDeviceRGB  && 'DeviceRGB',
+    hasSRGBTag    && 'sRGB',
+    hasICCRGB     && 'ICC-based RGB (N=3)',
+    hasSpot       && 'Spot/Separation',
+  ].filter(Boolean).join(', ') || 'unknown';
+  const isTagged        = text.includes('/MarkInfo');
+  const pageCount       = (text.match(/\/Type\s*\/Page[^s]/g) || []).length || 1;
+  const creatorM        = text.match(/\/Creator\s*\(([^)]{1,80})\)/);
+
+  // Extract image pixel dimensions from XObject dictionaries
+  const imageObjects = [];
+  // Use two separate simpler regexes to find image XObject dimensions
+  (function() {
+    var r1 = /\/Subtype\/Image[^>]{0,300}?\/Width\s+(\d+)[^>]{0,300}?\/Height\s+(\d+)/g;
+    var r2 = /\/Subtype\/Image[^>]{0,300}?\/Height\s+(\d+)[^>]{0,300}?\/Width\s+(\d+)/g;
+    var m;
+    while ((m = r1.exec(text)) !== null) {
+      var w = parseInt(m[1]), h = parseInt(m[2]);
+      if (w > 50 && h > 50) imageObjects.push({ w: w, h: h });
+    }
+    while ((m = r2.exec(text)) !== null) {
+      var w = parseInt(m[2]), h = parseInt(m[1]);
+      if (w > 50 && h > 50) imageObjects.push({ w: w, h: h });
+    }
+  })();
+  // Extract readable text content from PDF streams for copy checks
+  // PDF text operators: Tj, TJ, ' and " — extract string args
+  const extractedText = (text.match(/\(([^)]{1,200})\)\s*(?:Tj|'|")|(\[[^\]]*\])\s*TJ/g) || [])
+    .map(m => {
+      if (m.includes('TJ')) {
+        return (m.match(/\(([^)]+)\)/g) || []).map(s => s.slice(1,-1)).join('');
+      }
+      const inner = m.match(/\(([^)]*)\)/);
+      return inner ? inner[1] : '';
+    })
+    .join(' ')
+    .replace(/\[0-9]{3}|\n|\r/g, ' ')
+    .toLowerCase();
+
+  return {
+    version, pageCount, filesize, isTagged,
+    mediaBoxRaw, trimBoxRaw, bleedBoxRaw,
+    trimBox:  mmDims(trimBoxRaw),
+    bleedBox: mmDims(bleedBoxRaw),
+    hasOutputIntent, outputProfile,
+    hasTransparency, imageSMask, transGroup, transSignals,
+    hasRGB, hasCMYK, csDetail,
+    creator: creatorM ? creatorM[1] : null,
+    imageObjects,
+    mediaBox: mmDims(mediaBoxRaw),
+    extractedText
+  };
+}
+
+// ── Visual analysis (PDF.js render → pixel analysis) ─────────────────────────
+
+async function renderAndAnalyse(lib, buffer, structural) {
+  const SCALE = 2;
+  const pdf   = await lib.getDocument({ data: buffer.slice(0) }).promise;
+  const page  = await pdf.getPage(1);
+
+  // ── Image resolution via PDF.js ──────────────────────────────────────────────
+  // Strategy:
+  //   1. Get operator list and walk it, tracking CTM (transform stack).
+  //      Record each paintImageXObject call with the image name + CTM at that point.
+  //   2. Render the page (this causes PDF.js to load all image resources into page.objs).
+  //   3. After render, look up pixel dimensions for each recorded image name via
+  //      page.objs.get(). This is the only reliable way to get source pixel dimensions
+  //      in the browser — args[1]/args[2] on paintImageXObject are undefined in PDF.js 3.x.
+  //   4. DPI = (pixels / points) * 72, using the magnitude of the CTM scale vectors.
+
+  function mmul(m, n) {
+    return [
+      m[0]*n[0]+m[2]*n[1], m[1]*n[0]+m[3]*n[1],
+      m[0]*n[2]+m[2]*n[3], m[1]*n[2]+m[3]*n[3],
+      m[0]*n[4]+m[2]*n[5]+m[4], m[1]*n[4]+m[3]*n[5]+m[5]
+    ];
+  }
+
+  const imageDraws = []; // {name, ctm} collected during op-list walk
+  try {
+    const opList = await page.getOperatorList();
+    const OPS = pdfjsLib.OPS;
+    let ctm = [1,0,0,1,0,0];
+    const stack = [];
+    for (let i = 0; i < opList.fnArray.length; i++) {
+      const fn = opList.fnArray[i], args = opList.argsArray[i];
+      if      (fn === OPS.save)      { stack.push([...ctm]); }
+      else if (fn === OPS.restore)   { if (stack.length) ctm = stack.pop(); }
+      else if (fn === OPS.transform) { ctm = mmul(ctm, args); }
+      else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject) {
+        imageDraws.push({ name: args[0], ctm: [...ctm] });
+      }
+    }
+  } catch(e) { console.warn('Op list walk failed:', e); }
+
+  // Extract proper decoded text via PDF.js (handles all font encodings correctly)
+  // This replaces the unreliable raw-byte regex extraction for copy checks
+  let pdfjsText = '';
+  try {
+    const tc = await page.getTextContent();
+    pdfjsText = tc.items.map(i => i.str || '').join(' ').toLowerCase();
+  } catch(e) { console.warn('PDF.js text extraction failed:', e); }
+
+  const viewport = page.getViewport({ scale: SCALE });
+  const canvas   = document.createElement('canvas');
+  canvas.width   = Math.round(viewport.width);
+  canvas.height  = Math.round(viewport.height);
+  const ctx      = canvas.getContext('2d');
+
+  // Render first — this loads image XObjects into page.objs
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  // Now resolve pixel dimensions for each recorded image draw
+  const imagePlacements = [];
+  for (const draw of imageDraws) {
+    await new Promise(resolve => {
+      try {
+        page.objs.get(draw.name, imgData => {
+          if (imgData && imgData.width > 10 && imgData.height > 10) {
+            const ctm   = draw.ctm;
+            const ptsW  = Math.sqrt(ctm[0]*ctm[0] + ctm[1]*ctm[1]);
+            const ptsH  = Math.sqrt(ctm[2]*ctm[2] + ctm[3]*ctm[3]);
+            if (ptsW > 2 && ptsH > 2) {
+              const dpiX = Math.round(imgData.width  / ptsW * 72);
+              const dpiY = Math.round(imgData.height / ptsH * 72);
+              const dpi  = Math.min(dpiX, dpiY);
+              if (dpi > 10 && dpi < 6000) {
+                imagePlacements.push({
+                  pxW: imgData.width, pxH: imgData.height,
+                  wMM: Math.round(ptsW / 72 * 25.4),
+                  hMM: Math.round(ptsH / 72 * 25.4),
+                  dpi
+                });
+              }
+            }
+          }
+          resolve();
+        });
+      } catch(e) { resolve(); }
+    });
+  }
+
+  const W = canvas.width, H = canvas.height;
+  const { data } = ctx.getImageData(0, 0, W, H);
+
+  return {
+    canvas,
+    pdfjsText,
+    imagePlacements,
+    analysis: {
+      cropMarks:  detectCropMarks(data, W, H, SCALE),
+      colourBars: detectColourBars(data, W, H, SCALE, structural)
+    }
+  };
+}
+
+// Crop-mark detection
+// ─────────────────
+// At each corner we scan for horizontal and vertical line clusters.
+//
+// FALSE POSITIVE PROBLEM: slug-area text (e.g. filename/datestamp lines that
+// InDesign places in the slug) and registration-mark crosshairs both produce
+// darkness clusters that look like crop marks in a simple density profile.
+//
+// FIX — solid-run validation: when a cluster is found, we verify it contains
+// a solid consecutive run of at least MIN_RUN dark pixels in its primary
+// direction. Crop mark lines (thin but solid) easily meet this bar.
+// Text glyphs and circle rings do not — their dark pixels are scattered or
+// broken into short strokes.
+//
+// MIN_RUN is set proportionally to scale (≈2mm at 144 DPI) so it adapts to
+// whatever resolution PDF.js renders at.
+
+function detectCropMarks(data, W, H, scale) {
+  // Simplified, conservative detection.
+  // Looks for thin solid dark lines in each corner's slug area.
+  // Three strict criteria must ALL be met to count a cluster as a crop mark:
+  //   1. Cluster span ≤ 8px (real marks are 1-3px wide at 144 DPI)
+  //   2. Solid run ≥ minRun (the line extends at least 2mm)
+  //   3. Solid run ≥ minRunFrac (the line spans ≥25% of the corner scan width)
+  // If any corner produces an ambiguous result the overall result is capped
+  // at "check manually" rather than reporting a definitive count.
+
+  const cPx        = Math.max(50, Math.round(Math.min(W, H) * 0.08));
+  const minRun     = Math.max(6,  Math.round((2 / 25.4) * (scale || 2) * 72));
+  const minRunFrac = Math.round(cPx * 0.25);
+  const maxSpan    = 8;
+
+  function isDark(x, y) {
+    const i = (Math.max(0,Math.min(H-1,y)) * W + Math.max(0,Math.min(W-1,x))) * 4;
+    return (data[i] + data[i+1] + data[i+2]) / 3 < 200;
+  }
+
+  function maxHRun(x0, x1, y) {
+    let best = 0, run = 0;
+    for (let x = x0; x < x1; x++) {
+      if (isDark(x, y)) { run++; if (run > best) best = run; } else run = 0;
+    }
+    return best;
+  }
+
+  function maxVRun(y0, y1, x) {
+    let best = 0, run = 0;
+    for (let y = y0; y < y1; y++) {
+      if (isDark(x, y)) { run++; if (run > best) best = run; } else run = 0;
+    }
+    return best;
+  }
+
+  // A cluster qualifies as a crop mark if span is short AND run is long
+  function qualifies(span, run) {
+    return span <= maxSpan && run >= minRun && (span <= 3 || run >= minRunFrac);
+  }
+
+  function cornerSets(x0, y0, x1, y1) {
+    const ON = 0.005, OFF = 0.001;
+    let hSets = 0, vSets = 0;
+
+    // Horizontal scan
+    let inC = false, peakV = 0, peakY = y0, spanStart = y0;
+    for (let y = y0; y < y1; y++) {
+      let d = 0;
+      for (let x = x0; x < x1; x++) if (isDark(x, y)) d++;
+      const v = d / (x1 - x0);
+      if (v > ON) {
+        if (!inC) { inC = true; spanStart = y; peakV = 0; }
+        if (v > peakV) { peakV = v; peakY = y; }
+      } else if (v < OFF && inC) {
+        if (qualifies(y - spanStart, maxHRun(x0, x1, peakY))) hSets++;
+        inC = false;
+      }
+    }
+    if (inC && qualifies(y1 - spanStart, maxHRun(x0, x1, peakY))) hSets++;
+
+    // Vertical scan
+    inC = false; peakV = 0; let peakX = x0; spanStart = x0;
+    for (let x = x0; x < x1; x++) {
+      let d = 0;
+      for (let y = y0; y < y1; y++) if (isDark(x, y)) d++;
+      const v = d / (y1 - y0);
+      if (v > ON) {
+        if (!inC) { inC = true; spanStart = x; peakV = 0; }
+        if (v > peakV) { peakV = v; peakX = x; }
+      } else if (v < OFF && inC) {
+        if (qualifies(x - spanStart, maxVRun(y0, y1, peakX))) vSets++;
+        inC = false;
+      }
+    }
+    if (inC && qualifies(x1 - spanStart, maxVRun(y0, y1, peakX))) vSets++;
+
+    return Math.max(hSets, vSets);
+  }
+
+  const tl = cornerSets(0,      0,      cPx,   cPx);
+  const tr = cornerSets(W-cPx,  0,      W,     cPx);
+  const bl = cornerSets(0,      H-cPx,  cPx,   H);
+  const br = cornerSets(W-cPx,  H-cPx,  W,     H);
+
+  return { sets: Math.max(tl, tr, bl, br), corners: { tl, tr, bl, br } };
+}
+
+
+// Colour-bar detection — sliding narrow-band approach
+// Problem with simple density check: bars may cover only a thin strip of a large
+// slug area, so overall saturation density is low even when bars are clearly present.
+// Fix: slide a narrow band (~1.2% page height) across the outer 15% margins and
+// find the max distinct hues seen in any single band. Even a 5px colour bar
+// produces 4+ distinct hues. Normal slug content (crop marks, reg marks, text) = 0.
+
+function detectColourBars(data, W, H, scale, structural) {
+  // Fallback: 5% of page — tight enough to stay in the slug strip and not
+  // bleed into artwork content. 15% was causing false positives on ads with
+  // colourful imagery that extends close to the bleed edge.
+  const fallbackH = Math.round(H * 0.05), fallbackW = Math.round(W * 0.05);
+  let topPx = fallbackH, botPx = fallbackH, lftPx = fallbackW, rgtPx = fallbackW;
+
+  if (structural.bleedBoxRaw && structural.mediaBoxRaw) {
+    // Use box data directly — it's the authoritative slug extent.
+    // Do NOT force a minimum based on fallbackH; that was the source of false positives.
+    const mbH = structural.mediaBoxRaw[3];
+    const mbW = structural.mediaBoxRaw[2];
+    const bt  = Math.round((mbH - structural.bleedBoxRaw[3]) * scale);
+    const bb  = Math.round(structural.bleedBoxRaw[1] * scale);
+    const bl  = Math.round(structural.bleedBoxRaw[0] * scale);
+    const br  = Math.round((mbW - structural.bleedBoxRaw[2]) * scale);
+    if (bt > 4) topPx = bt;
+    if (bb > 4) botPx = bb;
+    if (bl > 4) lftPx = bl;
+    if (br > 4) rgtPx = br;
+  }
+
+  const bandH = Math.max(4, Math.round(H * 0.012));
+  const bandW = Math.max(4, Math.round(W * 0.012));
+
+  function hueBucket(r, g, b) {
+    const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+    if (max < 80 || d / max < 0.45) return -1;
+    let h = max===r ? (((g-b)/d)%6+6)%6 : max===g ? (b-r)/d+2 : (r-g)/d+4;
+    return Math.floor(h);
+  }
+
+  function slideH(x0, y0, x1, y1) {
+    let best = 0;
+    const step = Math.max(1, Math.floor(bandH / 2));
+    for (let y = Math.max(0,y0); y < Math.min(H,y1) - bandH; y += step) {
+      const hues = new Set();
+      for (let row = y; row < y + bandH && row < H; row++)
+        for (let x = Math.max(0,x0); x < Math.min(W,x1); x += 3) {
+          const i = row * W * 4 + x * 4;
+          const h = hueBucket(data[i], data[i+1], data[i+2]);
+          if (h >= 0) hues.add(h);
+        }
+      if (hues.size > best) best = hues.size;
+    }
+    return best;
+  }
+
+  function slideV(x0, y0, x1, y1) {
+    let best = 0;
+    const step = Math.max(1, Math.floor(bandW / 2));
+    for (let x = Math.max(0,x0); x < Math.min(W,x1) - bandW; x += step) {
+      const hues = new Set();
+      for (let col = x; col < x + bandW && col < W; col++)
+        for (let y = Math.max(0,y0); y < Math.min(H,y1); y += 3) {
+          const i = y * W * 4 + col * 4;
+          const h = hueBucket(data[i], data[i+1], data[i+2]);
+          if (h >= 0) hues.add(h);
+        }
+      if (hues.size > best) best = hues.size;
+    }
+    return best;
+  }
+
+  const topH = slideH(0,       0,       W,     topPx);
+  const botH = slideH(0,       H-botPx, W,     H);
+  const lftH = slideV(0,       0,       lftPx, H);
+  const rgtH = slideV(W-rgtPx, 0,       W,     H);
+
+  const maxHues = Math.max(topH, botH, lftH, rgtH);
+  return { present: maxHues >= 4, maxHues, strips: { topH, botH, lftH, rgtH } };
+}
+
+
+// ── TIFF analysis ─────────────────────────────────────────────────────────────
+
+const UTIF_URL = 'https://cdn.jsdelivr.net/npm/utif2@4.1.0/UTIF.js';
+let utifLib = null;
+
+function loadUTIF() {
+  if (utifLib) return Promise.resolve(utifLib);
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = UTIF_URL;
+    s.onload = () => { utifLib = window.UTIF; res(utifLib); };
+    s.onerror = () => rej(new Error('UTIF failed to load'));
+    document.head.appendChild(s);
+  });
+}
+
+function parseTIFFMeta(buffer) {
+  const view = new DataView(buffer);
+  const order = view.getUint16(0);
+  if (order !== 0x4949 && order !== 0x4D4D) throw new Error('Not a valid TIFF');
+  const le = order === 0x4949;
+  if (view.getUint16(2, le) !== 42) throw new Error('Not a valid TIFF');
+
+  const ifdOff = view.getUint32(4, le);
+  const nEntries = view.getUint16(ifdOff, le);
+  const tags = {};
+
+  for (let i = 0; i < nEntries; i++) {
+    const off  = ifdOff + 2 + i * 12;
+    const tag  = view.getUint16(off, le);
+    const type = view.getUint16(off + 2, le);
+    try {
+      if      (type === 3) tags[tag] = view.getUint16(off + 8, le);
+      else if (type === 4) tags[tag] = view.getUint32(off + 8, le);
+      else if (type === 5) {
+        const vo = view.getUint32(off + 8, le);
+        const n  = view.getUint32(vo, le), d = view.getUint32(vo + 4, le);
+        tags[tag] = d ? n / d : 0;
+      }
+    } catch(e) {}
+  }
+
+  const resUnit = tags[296] || 2; // 2=inch, 3=cm
+  let xRes = tags[282] || 0, yRes = tags[283] || 0;
+  if (resUnit === 3) { xRes *= 2.54; yRes *= 2.54; } // cm→inch
+
+  const photometric = tags[262]; // 5=CMYK, 2=RGB, 1=Grey
+  const spp = tags[277] || 3;
+  const colourSpace = photometric === 5 ? 'CMYK'
+                    : photometric === 2 ? 'RGB'
+                    : photometric === 1 ? 'Grayscale'
+                    : `Unknown (${photometric})`;
+  const hasAlpha = spp > (photometric === 5 ? 4 : photometric === 2 ? 3 : 1);
+
+  return {
+    width:  tags[256], height: tags[257],
+    xDPI:   Math.round(xRes), yDPI: Math.round(yRes),
+    colourSpace, hasAlpha, photometric,
+    compression: tags[259], bitsPerSample: tags[258] || 8
+  };
+}
+
+async function decodeTIFF(buffer, meta) {
+  const UTIF = await loadUTIF();
+  const ifds = UTIF.decode(buffer);
+  UTIF.decodeImage(buffer, ifds[0]);
+  const rgba = UTIF.toRGBA8(ifds[0]);
+
+  // Full source canvas
+  const src = document.createElement('canvas');
+  src.width  = ifds[0].width;
+  src.height = ifds[0].height;
+  const sCtx = src.getContext('2d');
+  const imgd = sCtx.createImageData(src.width, src.height);
+  for (let i = 0; i < rgba.length; i++) imgd.data[i] = rgba[i];
+  sCtx.putImageData(imgd, 0, 0);
+
+  // Scaled preview (max 280px wide)
+  const scale = 280 / src.width;
+  const prev = document.createElement('canvas');
+  prev.width  = Math.round(src.width  * scale);
+  prev.height = Math.round(src.height * scale);
+  const pCtx = prev.getContext('2d');
+  pCtx.drawImage(src, 0, 0, prev.width, prev.height);
+
+  // Flap boundary: 37mm from left
+  const dpi = meta.xDPI || 300;
+  const flapPxFull   = Math.round(37 / 25.4 * dpi);
+  const flapPxScaled = Math.round(flapPxFull * scale);
+
+  // Overlay on preview: shaded flap region + dashed boundary
+  pCtx.fillStyle = 'rgba(255,60,60,0.12)';
+  pCtx.fillRect(0, 0, flapPxScaled, prev.height);
+  pCtx.strokeStyle = '#ff3c3c';
+  pCtx.lineWidth = 1.5;
+  pCtx.setLineDash([5, 3]);
+  pCtx.beginPath();
+  pCtx.moveTo(flapPxScaled, 0);
+  pCtx.lineTo(flapPxScaled, prev.height);
+  pCtx.stroke();
+  pCtx.setLineDash([]);
+  pCtx.fillStyle = '#ff3c3c';
+  pCtx.font = 'bold 9px monospace';
+  pCtx.fillText('37mm flap', 3, 11);
+
+  // Flap strip (isolated, scaled up for readability — max 120px wide)
+  const flapScale = Math.min(3, 120 / flapPxScaled);
+  const flap = document.createElement('canvas');
+  flap.width  = Math.round(flapPxScaled * flapScale);
+  flap.height = Math.round(prev.height  * flapScale);
+  flap.getContext('2d').drawImage(prev, 0, 0, flapPxScaled, prev.height, 0, 0, flap.width, flap.height);
+
+  // Score flap content: sample variance of pixel brightness in flap strip
+  // High variance = content present; low = likely plain background
+  const flapData = sCtx.getImageData(0, 0, flapPxFull, src.height).data;
+  let sum = 0, sum2 = 0, n = 0;
+  for (let i = 0; i < flapData.length; i += 16) {
+    const v = (flapData[i] + flapData[i+1] + flapData[i+2]) / 3;
+    sum += v; sum2 += v * v; n++;
+  }
+  const mean = sum / n;
+  const variance = sum2 / n - mean * mean;
+  const stdDev = Math.sqrt(variance);
+  // stdDev < 15 = very uniform (plain bg), 15–40 = some texture, > 40 = rich content
+  const flapContentScore = { stdDev: Math.round(stdDev), mean: Math.round(mean) };
+
+  return { previewCanvas: prev, flapCanvas: flap, flapContentScore };
+}
+
+// ── TIFF results rendering ────────────────────────────────────────────────────
+
+function renderTIFFResults(meta, spec, previewCanvas, flapCanvas, flapScore, filename, filesize) {
+  const checks = [];
+  const dpi = meta.xDPI || 0;
+  const pxToMM = px => Math.round(px / (dpi || 300) * 25.4 * 10) / 10;
+  const wMM = pxToMM(meta.width), hMM = pxToMM(meta.height);
+
+  // File format
+  checks.push({ label: 'File format', st: 'pass', bl: 'Pass',
+    det: 'TIFF confirmed — correct format for cover wrap' });
+
+  // Dimensions
+  if (spec.trimW) {
+    const tol  = 1.5;
+    const trimOk  = (Math.abs(wMM - spec.trimW) <= tol && Math.abs(hMM - spec.trimH) <= tol)
+                 || (Math.abs(wMM - spec.trimH) <= tol && Math.abs(hMM - spec.trimW) <= tol);
+    const bleedOk = (Math.abs(wMM - spec.bleedW) <= tol && Math.abs(hMM - spec.bleedH) <= tol)
+                 || (Math.abs(wMM - spec.bleedH) <= tol && Math.abs(hMM - spec.bleedW) <= tol);
+    const ok = trimOk || bleedOk;
+    const match = bleedOk ? 'matches bleed' : trimOk ? 'matches trim (no bleed)' : 'does not match spec';
+    checks.push({ label: 'Dimensions', st: ok?'pass':'fail', bl: ok?'Pass':'Fail',
+      det: `${wMM} × ${hMM} mm (${meta.width} × ${meta.height} px) — ${match}`,
+      sub: `Trim ${spec.trimW} × ${spec.trimH} mm / Bleed ${spec.bleedW} × ${spec.bleedH} mm` });
+  }
+
+  // Resolution
+  const resOk = dpi >= 300;
+  checks.push({ label: 'Resolution', st: resOk?'pass':'fail', bl: resOk?'Pass':'Fail',
+    det: dpi ? `${dpi} DPI${dpi >= 300 ? ' ✓' : ' — minimum 300 DPI required'}` : 'Resolution not embedded in file' });
+
+  // Colour mode
+  const cmyk = meta.colourSpace === 'CMYK';
+  checks.push({ label: 'Colour mode', st: cmyk?'pass':'fail', bl: cmyk?'Pass':'Fail',
+    det: `${meta.colourSpace} — ${cmyk ? 'correct for print' : 'CMYK required for print'}` });
+
+  // Transparency / alpha
+  const noAlpha = !meta.hasAlpha;
+  checks.push({ label: 'No transparency', st: noAlpha?'pass':'fail', bl: noAlpha?'Pass':'Fail',
+    det: noAlpha ? 'No alpha channel' : 'Alpha channel present — flatten before supply' });
+
+  // Flap content
+  if (flapScore) {
+    const complex = flapScore.stdDev > 35;
+    checks.push({ label: 'Flap content (37mm)', st: complex?'warn':'pass', bl: complex?'Warning':'Clear', visual: true,
+      det: complex
+        ? `Content detected in flap zone (pixel std dev ${flapScore.stdDev}) — verify important elements are not hidden when folded`
+        : `Flap zone appears to be background/uniform (std dev ${flapScore.stdDev}) — likely safe`,
+      sub: `37mm flap = ${Math.round(37/25.4*(dpi||300))} px from left edge` });
+  }
+
+  const pass = checks.filter(c => c.st === 'pass').length;
+  const fail = checks.filter(c => c.st === 'fail').length;
+  const warn = checks.filter(c => c.st === 'warn').length;
+  const sizeFmt = filesize < 1048576 ? `${Math.round(filesize/1024)} KB` : `${(filesize/1048576).toFixed(1)} MB`;
+
+  let html = `<div class="file-header">`;
+  if (previewCanvas) html += `<div class="preview-thumb">${previewCanvas.outerHTML}</div>`;
+  html += `
+    <div class="file-header-text">
+      <div class="file-name">${filename}</div>
+      <div class="file-meta">TIFF · ${meta.width} × ${meta.height} px · ${sizeFmt}</div>
+      <div class="file-pub">${spec.pubLabel} — ${spec.sizeLabel}</div>
+    </div>
+    <div class="score-badge">
+      <span style="color:#ef4444;font-size:18px;font-family:monospace;font-weight:700;">${fail}</span>
+      <span style="color:#555;font-size:12px;">fail</span>
+      <span style="color:#3a3a3a;margin:0 3px;">·</span>
+      <span style="color:#f59e0b;font-size:18px;font-family:monospace;font-weight:700;">${warn}</span>
+      <span style="color:#555;font-size:12px;">warn</span>
+    </div>
+  </div>`;
+
+  html += `<table class="checks-table">`;
+  for (const ch of checks) {
+    const detCls = ch.st==='fail'?'bad':ch.st==='pass'?'good':'';
+    const vtag   = ch.visual ? `<span class="visual-tag">visual</span>` : '';
+    html += `<tr>
+      <td>${ikon(ch.st)}</td>
+      <td>${ch.label}</td>
+      <td><span class="det ${detCls}">${ch.det}${vtag}</span>${ch.sub?`<span class="det sub">${ch.sub}</span>`:''}</td>
+      <td>${bdg(ch.st, ch.bl)}</td>
+    </tr>`;
+  }
+  html += `</table>`;
+
+  // Flap strip preview
+  if (flapCanvas) {
+    html += `
+      <div style="margin-top:1.5rem;padding:14px 16px;background:#141414;border-radius:6px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#555;margin-bottom:10px;">Flap area — isolated (37mm from left edge)</div>
+        <div style="display:flex;gap:16px;align-items:flex-start;">
+          <div>
+            <div style="font-size:10px;color:#444;margin-bottom:4px;">Flap strip</div>
+            <div style="border:1px solid #2a2a2a;border-radius:3px;overflow:hidden;display:inline-block;">${flapCanvas.outerHTML}</div>
+          </div>
+          <div style="font-size:11px;color:#555;max-width:220px;line-height:1.6;padding-top:4px;">
+            This zone folds under when the cover wrap is applied. Content here will not be visible in the finished product — use for background/bleed extension only.
+          </div>
+        </div>
+      </div>`;
+  }
+
+  html += `<div class="summary-bar">
+    <div class="summary-item"><span class="summary-count pass">${pass}</span><span class="summary-lbl">Pass</span></div>
+    <div class="summary-item"><span class="summary-count fail">${fail}</span><span class="summary-lbl">Fail</span></div>
+    <div class="summary-item"><span class="summary-count warn">${warn}</span><span class="summary-lbl">Warn</span></div>
+  </div>`;
+
+  html += `<p class="reset-link" onclick="resetForm()">↑ Check another file</p>`;
+  document.getElementById('results').innerHTML = html;
+  document.getElementById('results').style.display = 'block';
+}
+
+// ── Results rendering ─────────────────────────────────────────────────────────
+
+function dimsMatch(actual, specW, specH, tol = 0.6) {
+  if (!actual) return false;
+  return (Math.abs(actual.w - specW) <= tol && Math.abs(actual.h - specH) <= tol)
+      || (Math.abs(actual.w - specH) <= tol && Math.abs(actual.h - specW) <= tol);
+}
+
+function fmm(d)       { return d ? `${d.w} × ${d.h} mm` : '—'; }
+function ikon(st)     { return `<span class="status ${st}">${{pass:'✓',fail:'✗',warn:'!',info:'i'}[st]||'?'}</span>`; }
+function bdg(st, lbl) { return `<span class="badge ${st}">${lbl}</span>`; }
+
+function renderResults(r, visual, previewCanvas, filename, filesize) {
+  const spec   = getSpec();
+  const checks = [];
+
+  // Transparency
+  if (spec.checkTransparency) {
+    const ok  = !r.hasTransparency;
+    const sigs = (r.transSignals || []).join(', ');
+    const det = r.hasTransparency
+      ? `Transparency detected — ${sigs || 'check PDF in Acrobat'}`
+      : 'No transparency found';
+    checks.push({ label: 'No transparency', st: ok?'pass':'fail', det, bl: ok?'Pass':'Fail',
+      sub: r.hasTransparency ? 'Flatten all transparency before supplying to publisher' : null });
+  }
+
+  // Trim + Bleed — always two separate rows, with MediaBox fallback when metadata absent
+  // Many valid PDFs omit TrimBox/BleedBox and export at bleed size (or bleed+slug for marks).
+  // We use containment: MediaBox >= spec means the artwork covers the required area.
+
+  function containsSpec(mb, sw, sh, tol) {
+    if (!mb) return false;
+    return (mb.w >= sw - tol && mb.h >= sh - tol)
+        || (mb.w >= sh - tol && mb.h >= sw - tol);
+  }
+
+  // ── Trim row ──────────────────────────────────────────────────────
+  if (spec.trimW !== null) {
+    if (r.trimBox) {
+      const ok = dimsMatch(r.trimBox, spec.trimW, spec.trimH);
+      checks.push({ label: 'Trim dimensions', st: ok?'pass':'fail', bl: ok?'Pass':'Fail',
+        det: `${fmm(r.trimBox)} — required ${spec.trimW} × ${spec.trimH} mm` });
+    } else {
+      // No TrimBox — fall back to MediaBox containment
+      const mbOk = containsSpec(r.mediaBox, spec.trimW, spec.trimH, 2);
+      const mb   = fmm(r.mediaBox);
+      if (mbOk) {
+        checks.push({ label: 'Trim dimensions', st: 'pass', bl: 'Pass',
+          det: `No TrimBox metadata — page ${mb} encompasses trim area ✓`,
+          sub: 'PDF exported without box metadata — verify trim is at ${spec.trimW} × ${spec.trimH} mm' });
+      } else {
+        checks.push({ label: 'Trim dimensions', st: 'warn', bl: 'Check',
+          det: `No TrimBox set — page is ${mb || '?'}, required ${spec.trimW} × ${spec.trimH} mm`,
+          sub: 'Verify dimensions manually — TrimBox not embedded in PDF' });
+      }
+    }
+  } else {
+    checks.push({ label: 'Trim dimensions', st: 'info', bl: 'N/A',
+      det: spec.sizeNote || 'Trim not specified for this ad size' });
+  }
+
+  // ── Bleed row ─────────────────────────────────────────────────────
+  if (spec.bleedW !== null) {
+    if (r.bleedBox) {
+      const ok = dimsMatch(r.bleedBox, spec.bleedW, spec.bleedH);
+      checks.push({ label: 'Bleed dimensions', st: ok?'pass':'fail', bl: ok?'Pass':'Fail',
+        det: `${fmm(r.bleedBox)} — required ${spec.bleedW} × ${spec.bleedH} mm` });
+    } else {
+      // No BleedBox — fall back to MediaBox containment
+      const mbOk  = containsSpec(r.mediaBox, spec.bleedW, spec.bleedH, 2);
+      const mb    = fmm(r.mediaBox);
+      const extra = r.mediaBox ? Math.round((Math.max(r.mediaBox.w, r.mediaBox.h) - Math.max(spec.bleedW, spec.bleedH)) * 10) / 10 : null;
+      if (mbOk) {
+        checks.push({ label: 'Bleed dimensions', st: 'pass', bl: 'Pass',
+          det: `No BleedBox metadata — page ${mb} encompasses bleed area ✓${extra > 0 ? ` (${extra}mm slug beyond bleed)` : ''}`,
+          sub: 'PDF exported without box metadata — bleed confirmed from page size' });
+      } else {
+        checks.push({ label: 'Bleed dimensions', st: 'warn', bl: 'Check',
+          det: `No BleedBox set — page is ${mb || '?'}, required ${spec.bleedW} × ${spec.bleedH} mm`,
+          sub: 'Verify 3mm bleed on all sides — BleedBox not embedded in PDF' });
+      }
+    }
+  } else {
+    checks.push({ label: 'Bleed dimensions', st: 'info', bl: 'N/A',
+      det: 'Bleed not specified for this ad size' });
+  }
+
+  // Output intent
+  if (spec.checkProfile) {
+    const ok  = r.hasOutputIntent;
+    const detOk  = r.outputProfile
+      ? `Profile embedded: ${r.outputProfile} — verify this matches: ${spec.profileLabel}`
+      : `Output intent present — verify profile matches: ${spec.profileLabel}`;
+    const detFail = `No output intent embedded — required: ${spec.profileLabel}`;
+    checks.push({ label: 'PDF profile', st: ok?'pass':'fail', bl: ok?'Pass':'Fail',
+      det: ok ? detOk : detFail });
+  }
+
+  // Colour mode
+  if (spec.checkCMYK) {
+    const cmykOnly = r.hasCMYK && !r.hasRGB;
+    const mixed    = r.hasCMYK && r.hasRGB;
+    const rgbOnly  = r.hasRGB && !r.hasCMYK;
+    const unknown  = !r.hasCMYK && !r.hasRGB;
+    const st = cmykOnly ? 'pass' : (mixed ? 'warn' : (unknown ? 'warn' : 'fail'));
+    const cs = r.csDetail || '';
+    checks.push({ label: 'Colour mode', st, bl: cmykOnly?'Pass':(mixed?'Warning':(unknown?'Warning':'Fail')),
+      det: cmykOnly ? `CMYK — ${cs}`
+         : mixed    ? `Mixed CMYK + RGB — ${cs}`
+         : rgbOnly  ? `RGB only — convert to CMYK for print (${cs})`
+                    : 'No recognisable colour space detected — verify manually',
+      sub: unknown  ? 'May use ICC profiles not detected by this tool — check in Acrobat preflight' : null });
+  }
+
+  // Minimum image resolution — pixel dims + physical placement from PDF.js operator list
+  // paintImageXObject args = [name, pixelW, pixelH]; CTM gives physical size in pts.
+  // DPI = (pixels / points) * 72 — same method used by browser-based preflight tools.
+  {
+    const placements = (r.imagePlacements || []).filter(p => p.dpi && p.dpi > 10 && p.dpi < 5000);
+    if (placements.length > 0) {
+      const sorted = [...placements].sort((a, b) => a.dpi - b.dpi);
+      const lowest = sorted[0];
+      const ok     = lowest.dpi >= 300;
+      const allDPIs = sorted.map(p => `${p.pxW}×${p.pxH}px@${p.wMM}×${p.hMM}mm=${p.dpi}dpi`).join(' · ');
+      checks.push({ label: 'Image resolution', st: ok?'pass':'fail', bl: ok?'Pass':'Fail',
+        det: ok ? `Lowest: ${lowest.dpi} DPI — all images meet 300 DPI minimum`
+                : `Lowest: ${lowest.dpi} DPI — below 300 DPI minimum`,
+        sub: allDPIs });
+    } else {
+      checks.push({ label: 'Image resolution', st: 'info', bl: 'Manual',
+        det: 'No raster images found — file may be vector only, or verify manually' });
+    }
+  }
+
+  // Crop marks — visual
+  if (spec.checkCropMarks) {
+    if (visual) {
+      const sets = visual.cropMarks.sets;
+      const { tl, tr, bl: blc, br } = visual.cropMarks.corners;
+      // Only report a definitive result when exactly 1 set is clearly detected.
+      // 0 and 2+ both prompt manual verification — pixel detection is not reliable
+      // enough across all ad styles to make confident fail calls on these.
+      const st  = sets === 1 ? 'pass' : sets >= 2 ? 'fail' : 'info';
+      const bl_ = sets === 1 ? 'Pass' : sets >= 2 ? 'Fail' : 'Manual';
+      const det = sets === 0
+        ? 'Not detected — verify manually in PDF viewer (marks may be present but not identifiable from rendered pixels)'
+        : sets === 1
+        ? '1 set detected ✓'
+        : `${sets} sets detected — only 1 set required`;
+      checks.push({ label: 'Crop marks', st, bl: bl_, visual: true, det,
+        sub: `corner analysis — TL:${tl} TR:${tr} BL:${blc} BR:${br}` });
+    } else {
+      checks.push({ label: 'Crop marks', st: 'info', bl: 'Manual', det: 'Visual render unavailable — verify manually in PDF viewer' });
+    }
+  }
+
+  // Colour bars — visual
+  if (spec.checkColourBars) {
+    if (visual) {
+      const pres = visual.colourBars.present;
+      const s    = visual.colourBars.strips;
+      const fmt  = (x) => `${x.hues}hue/${(x.ratio*100).toFixed(0)}%`;
+      checks.push({ label: 'No colour bars', st: pres?'fail':'pass', bl: pres?'Fail':'Pass', visual: true,
+        det:  pres ? 'Colour bars detected — ${visual.colourBars.maxHues} distinct hues in slug area'
+                   : 'No colour bars detected in slug area',
+        sub:  pres ? `peak hues by edge — top:${s.topH} bot:${s.botH} left:${s.lftH} right:${s.rgtH}` : null });
+    } else {
+      checks.push({ label: 'No colour bars', st: 'info', bl: 'Manual', det: 'Visual render unavailable — check manually' });
+    }
+  }
+
+  // ── Copy checks (publication-specific) ──────────────────────────────────────
+  const pubKey = document.getElementById('publication').value;
+  const pubCopyChecks = PUBLICATIONS[pubKey]?.copyChecks || [];
+  const copyResults = pubCopyChecks.map(ck => {
+    if (ck.type === 'text') {
+      const found = ck.search.some(s => r.extractedText && r.extractedText.includes(s.toLowerCase()));
+      return { label: ck.label, st: found?'pass':'fail', bl: found?'Pass':'Fail',
+               det: found ? ck.pass : ck.fail };
+    } else {
+      return { label: ck.label, st: 'warn', bl: 'Manual', det: ck.prompt };
+    }
+  });
+
+  const pass = checks.filter(c => c.st === 'pass').length + copyResults.filter(c => c.st === 'pass').length;
+  const fail = checks.filter(c => c.st === 'fail').length + copyResults.filter(c => c.st === 'fail').length;
+  const warn = checks.filter(c => c.st === 'warn').length + copyResults.filter(c => c.st === 'warn').length;
+
+  const sizeFmt = filesize < 1048576
+    ? `${Math.round(filesize/1024)} KB`
+    : `${(filesize/1048576).toFixed(1)} MB`;
+
+  let html = `<div class="file-header">`;
+  if (previewCanvas) {
+    html += `<div class="preview-thumb">${previewCanvas.outerHTML}</div>`;
+  }
+  html += `
+    <div class="file-header-text">
+      <div class="file-name">${filename}</div>
+      <div class="file-meta">PDF ${r.version} · ${r.pageCount}p · ${sizeFmt}${r.creator ? ' · ' + r.creator.split(' ').slice(0,4).join(' ') : ''}</div>
+    <div class="file-pub">${spec.pubLabel} — ${spec.sizeLabel}</div>
+    </div>
+    <div class="score-badge">
+      <span style="color:#ef4444;font-size:18px;font-family:monospace;font-weight:700;">${fail}</span>
+      <span style="color:#555;font-size:12px;">fail</span>
+      <span style="color:#3a3a3a;margin:0 3px;">·</span>
+      <span style="color:#f59e0b;font-size:18px;font-family:monospace;font-weight:700;">${warn}</span>
+      <span style="color:#555;font-size:12px;">warn</span>
+    </div>
+  </div>`;
+
+  html += `<table class="checks-table">`;
+  for (const c of checks) {
+    const detCls = c.st==='fail' ? 'bad' : c.st==='pass' ? 'good' : '';
+    const vtag   = c.visual ? `<span class="visual-tag">visual</span>` : '';
+    html += `<tr>
+      <td>${ikon(c.st)}</td>
+      <td>${c.label}</td>
+      <td>
+        <span class="det ${detCls}">${c.det}${vtag}</span>
+        ${c.sub ? `<span class="det sub">${c.sub}</span>` : ''}
+      </td>
+      <td>${bdg(c.st, c.bl)}</td>
+    </tr>`;
+  }
+  html += `</table>`;
+
+  if (copyResults.length > 0) {
+    html += `<div style="margin-top:1.5rem;">`;
+    html += `<p class="section-label">Copy &amp; content approval</p>`;
+    html += `<table class="checks-table">`;
+    for (const c of copyResults) {
+      const detCls = c.st==='fail'?'bad':c.st==='pass'?'good':'';
+      html += `<tr>
+        <td>${ikon(c.st)}</td>
+        <td>${c.label}</td>
+        <td><span class="det ${detCls}">${c.det}</span></td>
+        <td>${bdg(c.st, c.bl)}</td>
+      </tr>`;
+    }
+    html += `</table></div>`;
+  }
+
+  html += `<div class="summary-bar">
+    <div class="summary-item"><span class="summary-count pass">${pass}</span><span class="summary-lbl">Pass</span></div>
+    <div class="summary-item"><span class="summary-count fail">${fail}</span><span class="summary-lbl">Fail</span></div>
+    <div class="summary-item"><span class="summary-count warn">${warn}</span><span class="summary-lbl">Warn</span></div>
+  </div>`;
+
+  if (visual) {
+    html += `<p class="footnote"><span class="visual-tag">visual</span> = detected by rendering the PDF page to a canvas and pixel-analysing corner regions (crop marks) and edge slug strips (colour bars).</p>`;
+  }
+  if (r.isTagged) {
+    html += `<p class="footnote" style="margin-top:6px;">Note: PDF is tagged (accessibility metadata present) — remove on InDesign export for print ads.</p>`;
+  }
+  html += `<p class="reset-link" onclick="resetForm()">↑ Check another file</p>`;
+
+  document.getElementById('results').innerHTML = html;
+}
+
+// Initialise size dropdown on load
+document.addEventListener('DOMContentLoaded', onPublicationChange);
+
+
+
+function resetForm() {
+  document.getElementById('results').style.display = 'none';
+  const fi = document.getElementById('fileInput'); if (fi) fi.value = '';
+}
+</script>
+</div><!-- /s-page -->
+</body>
+</html>
