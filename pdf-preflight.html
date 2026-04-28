@@ -310,7 +310,8 @@
   <div style="display:flex;align-items:center;gap:6px;">
     <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#555;white-space:nowrap;">Publication</span>
     <select id="publication" onchange="onPublicationChange()">
-      <option value="royal-ballet" selected>Royal Ballet &amp; Opera — Magazine</option>
+      <option value="" selected disabled>Select publication…</option>
+      <option value="royal-ballet">Royal Ballet &amp; Opera — Magazine</option>
       <option value="rbo-programme">Royal Ballet &amp; Opera — Programme</option>
       <option value="rbo-season-guide">Royal Ballet &amp; Opera — Season Guide</option>
       <option value="rics-modus">RICS Modus</option>
@@ -444,17 +445,23 @@ let pdfjsLib = null;
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function onPublicationChange() {
-  const pub = PUBLICATIONS[document.getElementById('publication').value];
-  if (!pub) return;
+  const pubKey = document.getElementById('publication').value;
+  const pub = PUBLICATIONS[pubKey];
   const sel = document.getElementById('adsize');
   sel.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select format\u2026';
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  sel.appendChild(placeholder);
+  if (!pub) return;
   Object.entries(pub.sizes).forEach(([key, sz]) => {
     const opt = document.createElement('option');
     opt.value = key;
     opt.textContent = sz.label;
     sel.appendChild(opt);
   });
-  onSizeChange();
 }
 
 function onSizeChange() {
